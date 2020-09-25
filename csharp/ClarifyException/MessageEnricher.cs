@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace codingdojo
 {
@@ -57,18 +58,17 @@ namespace codingdojo
             var formulaName = spreadsheetWorkbook.GetFormulaName();
             var presentation = spreadsheetWorkbook.GetPresentation();
 
-            var ie = new InvalidExpressionEnricher();
-            if (ie.Applies(e))
+            var enrichers = new List<SingleEnricher> { //
+                new InvalidExpressionEnricher(), //
+                new CircularReferenceEnricher()
+            };
+            foreach (var enricher in enrichers)
             {
-                var error = ie.ErrorMessage(formulaName, e);
-                return new ErrorResult(formulaName, error, presentation);
-            }
-
-            var cr = new CircularReferenceEnricher();
-            if (cr.Applies(e))
-            {
-                var error = cr.ErrorMessage(formulaName, e);
-                return new ErrorResult(formulaName, error, presentation);
+                if (enricher.Applies(e))
+                {
+                    var error = enricher.ErrorMessage(formulaName, e);
+                    return new ErrorResult(formulaName, error, presentation);
+                }
             }
 
             if ("Object reference not set to an instance of an object".Equals(e.Message) && StackTraceContains(e, "VLookup"))
