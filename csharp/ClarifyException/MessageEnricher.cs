@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace codingdojo
 {
 
-    public interface IErrorMessage // Chain of Responsibility
+    public interface IErrorMessage // Chain of Responsibility or Try monad
     {
         bool AppliesTo(Exception e);
         string CreateMessage(string formulaName, Exception e);
