@@ -21,21 +21,26 @@ namespace codingdojo
                 return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
             }
 
-            if ("Object reference not set to an instance of an object".Equals(e.Message)
-                && StackTraceContains(e, "VLookup"))
-                return new ErrorResult(formulaName, "Missing Lookup Table", spreadsheetWorkbook.GetPresentation());
+            if ("Object reference not set to an instance of an object".Equals(e.Message) && StackTraceContains(e, "VLookup")) {
+                var error = "Missing Lookup Table";
+                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+            }
+
             if ("No matches found".Equals(e.Message))
             {
                 var error = parseNoMatchException(e, formulaName);
                 return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
             }
 
-            return new ErrorResult(formulaName, e.Message, spreadsheetWorkbook.GetPresentation());
+            if (true){
+                var error = e.Message;
+                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+            }
         }
 
         private bool StackTraceContains(Exception e, string message)
         {
-            foreach (var ste in e.StackTrace.Split('\n'))  
+            foreach (var ste in e.StackTrace.Split('\n'))
             {
                  if (ste.Contains(message))
                     return true;
