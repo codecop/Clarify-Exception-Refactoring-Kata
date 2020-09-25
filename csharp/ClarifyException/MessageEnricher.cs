@@ -95,26 +95,43 @@ namespace codingdojo
         }
     }
 
-    public class MessageEnricher
+    public class ErrorMessages
     {
-        public ErrorResult EnrichError(SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
+        private readonly List<IErrorMessage> enrichers;
+        private readonly IErrorMessage finalEnricher;
+
+        public ErrorMessages()
         {
-            var enrichers = new List<IErrorMessage> { //
+            this.enrichers = new List<IErrorMessage> { //
                 new InvalidExpressionErrorMessage(), //
                 new CircularReferenceErrorMessage(), //
                 new MissingLookupTableErrorMessage(), //
                 new NoMatchesErrorMessage()
             };
+            this.finalEnricher = new GenericErrorMessage();
+        }
+
+        public IErrorMessage findX(Exception e)
+        {
             foreach (var enricher in enrichers)
             {
                 if (enricher.AppliesTo(e))
                 {
-                    return CreateErrorResult(enricher, spreadsheetWorkbook, e);
+                    return enricher;
                 }
             }
 
-            var finalEnricher = new GenericErrorMessage();
-            return CreateErrorResult(finalEnricher, spreadsheetWorkbook, e);
+            return finalEnricher;
+        }
+    }
+
+    public class MessageEnricher
+    {
+        public ErrorResult EnrichError(SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
+        {
+            var enrichers = new ErrorMessages();
+            var enricher = enrichers.findX(e);
+            return CreateErrorResult(enricher, spreadsheetWorkbook, e);
         }
 
         private ErrorResult CreateErrorResult(IErrorMessage enricher, SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
