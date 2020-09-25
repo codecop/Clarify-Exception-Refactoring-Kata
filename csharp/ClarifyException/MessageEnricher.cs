@@ -24,7 +24,6 @@ namespace codingdojo
         }
     }
 
-
     public class CircularReferenceEnricher : SingleEnricher
     {
         public bool Applies(Exception e)
@@ -33,11 +32,6 @@ namespace codingdojo
         }
 
         public string ErrorMessage(string formulaName, Exception e)
-        {
-            return parseCircularReferenceException(e, formulaName);
-        }
-
-        private string parseCircularReferenceException(Exception e, string formulaName)
         {
             if (e.GetType() == typeof(SpreadsheetException))
             {
@@ -48,7 +42,30 @@ namespace codingdojo
 
             return e.Message;
         }
+    }
 
+    public class MissingLookupTableEnricher : SingleEnricher
+    {
+        public bool Applies(Exception e)
+        {
+            return "Object reference not set to an instance of an object".Equals(e.Message) &&
+                StackTraceContains(e, "VLookup");
+        }
+
+        private bool StackTraceContains(Exception e, string message)
+        {
+            foreach (var ste in e.StackTrace.Split('\n'))
+            {
+                if (ste.Contains(message))
+                    return true;
+            }
+            return false;
+        }
+
+        public string ErrorMessage(string formulaName, Exception e)
+        {
+            return "Missing Lookup Table";
+        }
     }
 
     public class MessageEnricher
@@ -60,7 +77,8 @@ namespace codingdojo
 
             var enrichers = new List<SingleEnricher> { //
                 new InvalidExpressionEnricher(), //
-                new CircularReferenceEnricher()
+                new CircularReferenceEnricher(), //
+                new MissingLookupTableEnricher(), //
             };
             foreach (var enricher in enrichers)
             {
@@ -69,12 +87,6 @@ namespace codingdojo
                     var error = enricher.ErrorMessage(formulaName, e);
                     return new ErrorResult(formulaName, error, presentation);
                 }
-            }
-
-            if ("Object reference not set to an instance of an object".Equals(e.Message) && StackTraceContains(e, "VLookup"))
-            {
-                var error = "Missing Lookup Table";
-                return new ErrorResult(formulaName, error, presentation);
             }
 
             if ("No matches found".Equals(e.Message))
@@ -88,16 +100,6 @@ namespace codingdojo
                 var error = e.Message;
                 return new ErrorResult(formulaName, error, presentation);
             }
-        }
-
-        private bool StackTraceContains(Exception e, string message)
-        {
-            foreach (var ste in e.StackTrace.Split('\n'))
-            {
-                if (ste.Contains(message))
-                    return true;
-            }
-            return false;
         }
 
         private string parseNoMatchException(Exception e, string formulaName)
