@@ -28,19 +28,15 @@ namespace codingdojo
     {
         public bool AppliesTo(Exception e)
         {
-            return e.Message.StartsWith("Circular Reference");
+            return e.GetType() == typeof(SpreadsheetException) &&
+                e.Message.StartsWith("Circular Reference");
         }
 
         public string CreateMessage(string formulaName, Exception e)
         {
-            if (e.GetType() == typeof(SpreadsheetException))
-            {
-                var spreadSheetException = (SpreadsheetException)e;
-                return "Circular Reference in spreadsheet related to formula '" + formulaName +
-                       "'. Cells: " + spreadSheetException.Cells;
-            }
-
-            return e.Message;
+            var spreadSheetException = (SpreadsheetException)e;
+            return "Circular Reference in spreadsheet related to formula '" + formulaName +
+                    "'. Cells: " + spreadSheetException.Cells;
         }
     }
 
@@ -56,7 +52,8 @@ namespace codingdojo
         {
             foreach (var ste in e.StackTrace.Split('\n'))
             {
-                if (ste.Contains(message)) {
+                if (ste.Contains(message))
+                {
                     return true;
                 }
             }
@@ -73,19 +70,15 @@ namespace codingdojo
     {
         public bool AppliesTo(Exception e)
         {
-            return "No matches found".Equals(e.Message);
+            return e.GetType() == typeof(SpreadsheetException) &&
+                "No matches found".Equals(e.Message);
         }
 
         public string CreateMessage(string formulaName, Exception e)
         {
-            if (e.GetType() == typeof(SpreadsheetException))
-            {
-                var spreadSheetException = (SpreadsheetException)e;
-                return "No match found for token [" + spreadSheetException.Token +
-                       "] related to formula '" + formulaName + "'.";
-            }
-
-            return e.Message;
+            var spreadSheetException = (SpreadsheetException)e;
+            return "No match found for token [" + spreadSheetException.Token +
+                    "] related to formula '" + formulaName + "'.";
         }
     }
 
@@ -116,16 +109,23 @@ namespace codingdojo
                 new NoMatchesErrorMessage(), //
                 new GenericErrorMessage()
             };
+
             foreach (var enricher in enrichers)
             {
                 if (enricher.AppliesTo(e))
                 {
-                    var error = enricher.CreateMessage(formulaName, e);
-                    return new ErrorResult(formulaName, error, presentation);
+                    return CreateErrorResult(enricher, spreadsheetWorkbook, e);
                 }
             }
-            var error2 = new GenericErrorMessage().CreateMessage(formulaName, e);
-            return new ErrorResult(formulaName, error2, presentation);
+            return CreateErrorResult(new GenericErrorMessage(), spreadsheetWorkbook, e);
+        }
+
+        private ErrorResult CreateErrorResult(IErrorMessage enricher, SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
+        {
+            var formulaName = spreadsheetWorkbook.GetFormulaName();
+            var presentation = spreadsheetWorkbook.GetPresentation();
+            var error = enricher.CreateMessage(formulaName, e);
+            return new ErrorResult(formulaName, error, presentation);
         }
     }
 }
