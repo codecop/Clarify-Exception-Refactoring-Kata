@@ -99,17 +99,12 @@ namespace codingdojo
     {
         public ErrorResult EnrichError(SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
         {
-            var formulaName = spreadsheetWorkbook.GetFormulaName();
-            var presentation = spreadsheetWorkbook.GetPresentation();
-
             var enrichers = new List<IErrorMessage> { //
                 new InvalidExpressionErrorMessage(), //
                 new CircularReferenceErrorMessage(), //
                 new MissingLookupTableErrorMessage(), //
-                new NoMatchesErrorMessage(), //
-                new GenericErrorMessage()
+                new NoMatchesErrorMessage()
             };
-
             foreach (var enricher in enrichers)
             {
                 if (enricher.AppliesTo(e))
@@ -117,7 +112,9 @@ namespace codingdojo
                     return CreateErrorResult(enricher, spreadsheetWorkbook, e);
                 }
             }
-            return CreateErrorResult(new GenericErrorMessage(), spreadsheetWorkbook, e);
+
+            var finalEnricher = new GenericErrorMessage();
+            return CreateErrorResult(finalEnricher, spreadsheetWorkbook, e);
         }
 
         private ErrorResult CreateErrorResult(IErrorMessage enricher, SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
