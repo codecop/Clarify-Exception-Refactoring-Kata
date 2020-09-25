@@ -68,6 +68,38 @@ namespace codingdojo
         }
     }
 
+    public class NoMatchesEnricher : SingleEnricher
+    {
+        public bool Applies(Exception e)
+        {
+            return "No matches found".Equals(e.Message);
+        }
+
+        public string ErrorMessage(string formulaName, Exception e)
+        {
+            if (e.GetType() == typeof(SpreadsheetException))
+            {
+                var we = (SpreadsheetException)e;
+                return "No match found for token [" + we.Token + "] related to formula '" + formulaName + "'.";
+            }
+
+            return e.Message;
+        }
+    }
+
+    public class GenericEnricher : SingleEnricher
+    {
+        public bool Applies(Exception e)
+        {
+            return true;
+        }
+
+        public string ErrorMessage(string formulaName, Exception e)
+        {
+            return e.Message;
+        }
+    }
+
     public class MessageEnricher
     {
         public ErrorResult EnrichError(SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
@@ -79,6 +111,8 @@ namespace codingdojo
                 new InvalidExpressionEnricher(), //
                 new CircularReferenceEnricher(), //
                 new MissingLookupTableEnricher(), //
+                new NoMatchesEnricher(), //
+                new GenericEnricher()
             };
             foreach (var enricher in enrichers)
             {
@@ -88,30 +122,8 @@ namespace codingdojo
                     return new ErrorResult(formulaName, error, presentation);
                 }
             }
-
-            if ("No matches found".Equals(e.Message))
-            {
-                var error = parseNoMatchException(e, formulaName);
-                return new ErrorResult(formulaName, error, presentation);
-            }
-
-            if (true)
-            {
-                var error = e.Message;
-                return new ErrorResult(formulaName, error, presentation);
-            }
+            var error2 = new GenericEnricher().ErrorMessage(formulaName, e);
+            return new ErrorResult(formulaName, error2, presentation);
         }
-
-        private string parseNoMatchException(Exception e, string formulaName)
-        {
-            if (e.GetType() == typeof(SpreadsheetException))
-            {
-                var we = (SpreadsheetException)e;
-                return "No match found for token [" + we.Token + "] related to formula '" + formulaName + "'.";
-            }
-
-            return e.Message;
-        }
-
     }
 }
