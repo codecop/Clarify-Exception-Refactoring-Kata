@@ -95,6 +95,23 @@ namespace codingdojo
         }
     }
 
+    public class MissingFormulaErrorMessage : IErrorMessage
+    {
+        // copied from CircularReferenceErrorMessage is easiest
+        public bool AppliesTo(Exception e)
+        {
+            return e.GetType() == typeof(SpreadsheetException) &&
+                e.Message.StartsWith("Missing Formula");
+        }
+
+        public string CreateMessage(string formulaName, Exception e)
+        {
+            var spreadSheetException = (SpreadsheetException)e;
+            return "Invalid expression found in tax formula [" + formulaName +
+                    "]. Check for merged cells near " + spreadSheetException.Cells;
+        }
+    }
+
     public class ErrorMessages
     {
         private readonly List<IErrorMessage> errorMessages;
@@ -106,7 +123,8 @@ namespace codingdojo
                 new InvalidExpressionErrorMessage(), //
                 new CircularReferenceErrorMessage(), //
                 new MissingLookupTableErrorMessage(), //
-                new NoMatchesErrorMessage()
+                new NoMatchesErrorMessage(), //
+                new MissingFormulaErrorMessage(), //
             };
             this.genericErrorMessage = new GenericErrorMessage();
         }
