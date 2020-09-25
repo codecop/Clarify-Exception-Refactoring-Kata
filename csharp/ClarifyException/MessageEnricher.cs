@@ -2,39 +2,61 @@
 
 namespace codingdojo
 {
+
+    public interface SingleEnricher
+    {
+        bool Applies(Exception e);
+        string ErrorMessage(string formulaName, Exception e);
+    }
+
+    public class InvalidExpressionEnricher : SingleEnricher
+    {
+        public bool Applies(Exception e)
+        {
+            return e.GetType() == typeof(ExpressionParseException);
+        }
+
+        public string ErrorMessage(string formulaName, Exception e)
+        {
+            return "Invalid expression found in tax formula [" + formulaName +
+                   "]. Check that separators and delimiters use the English locale.";;
+        }
+    }
+
     public class MessageEnricher
     {
         public ErrorResult EnrichError(SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
         {
             var formulaName = spreadsheetWorkbook.GetFormulaName();
+            var presentation = spreadsheetWorkbook.GetPresentation();
 
-            if (e.GetType() == typeof(ExpressionParseException))
+            var ie = new InvalidExpressionEnricher();
+            if (ie.Applies(e))
             {
-                var error = "Invalid expression found in tax formula [" + formulaName +
-                            "]. Check that separators and delimiters use the English locale.";
-                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+                var error = ie.ErrorMessage(formulaName, e);
+                return new ErrorResult(formulaName, error, presentation);
             }
 
             if (e.Message.StartsWith("Circular Reference"))
             {
                 var error = parseCircularReferenceException(e, formulaName);
-                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+                return new ErrorResult(formulaName, error, presentation);
             }
 
             if ("Object reference not set to an instance of an object".Equals(e.Message) && StackTraceContains(e, "VLookup")) {
                 var error = "Missing Lookup Table";
-                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+                return new ErrorResult(formulaName, error, presentation);
             }
 
             if ("No matches found".Equals(e.Message))
             {
                 var error = parseNoMatchException(e, formulaName);
-                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+                return new ErrorResult(formulaName, error, presentation);
             }
 
             if (true){
                 var error = e.Message;
-                return new ErrorResult(formulaName, error, spreadsheetWorkbook.GetPresentation());
+                return new ErrorResult(formulaName, error, presentation);
             }
         }
 
