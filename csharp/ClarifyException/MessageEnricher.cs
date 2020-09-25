@@ -4,49 +4,49 @@ using System.Collections.Generic;
 namespace codingdojo
 {
 
-    public interface SingleEnricher
+    public interface IErrorMessage // Chain of Responsibility
     {
-        bool Applies(Exception e);
-        string ErrorMessage(string formulaName, Exception e);
+        bool AppliesTo(Exception e);
+        string CreateMessage(string formulaName, Exception e);
     }
 
-    public class InvalidExpressionEnricher : SingleEnricher
+    public class InvalidExpressionErrorMessage : IErrorMessage
     {
-        public bool Applies(Exception e)
+        public bool AppliesTo(Exception e)
         {
             return e.GetType() == typeof(ExpressionParseException);
         }
 
-        public string ErrorMessage(string formulaName, Exception e)
+        public string CreateMessage(string formulaName, Exception e)
         {
             return "Invalid expression found in tax formula [" + formulaName +
                    "]. Check that separators and delimiters use the English locale.";
         }
     }
 
-    public class CircularReferenceEnricher : SingleEnricher
+    public class CircularReferenceErrorMessage : IErrorMessage
     {
-        public bool Applies(Exception e)
+        public bool AppliesTo(Exception e)
         {
             return e.Message.StartsWith("Circular Reference");
         }
 
-        public string ErrorMessage(string formulaName, Exception e)
+        public string CreateMessage(string formulaName, Exception e)
         {
             if (e.GetType() == typeof(SpreadsheetException))
             {
-                var we = (SpreadsheetException)e;
-                return "Circular Reference in spreadsheet related to formula '" + formulaName + "'. Cells: " +
-                       we.Cells;
+                var spreadSheetException = (SpreadsheetException)e;
+                return "Circular Reference in spreadsheet related to formula '" + formulaName +
+                       "'. Cells: " + spreadSheetException.Cells;
             }
 
             return e.Message;
         }
     }
 
-    public class MissingLookupTableEnricher : SingleEnricher
+    public class MissingLookupTableErrorMessage : IErrorMessage
     {
-        public bool Applies(Exception e)
+        public bool AppliesTo(Exception e)
         {
             return "Object reference not set to an instance of an object".Equals(e.Message) &&
                 StackTraceContains(e, "VLookup");
@@ -56,45 +56,47 @@ namespace codingdojo
         {
             foreach (var ste in e.StackTrace.Split('\n'))
             {
-                if (ste.Contains(message))
+                if (ste.Contains(message)) {
                     return true;
+                }
             }
             return false;
         }
 
-        public string ErrorMessage(string formulaName, Exception e)
+        public string CreateMessage(string formulaName, Exception e)
         {
             return "Missing Lookup Table";
         }
     }
 
-    public class NoMatchesEnricher : SingleEnricher
+    public class NoMatchesErrorMessage : IErrorMessage
     {
-        public bool Applies(Exception e)
+        public bool AppliesTo(Exception e)
         {
             return "No matches found".Equals(e.Message);
         }
 
-        public string ErrorMessage(string formulaName, Exception e)
+        public string CreateMessage(string formulaName, Exception e)
         {
             if (e.GetType() == typeof(SpreadsheetException))
             {
-                var we = (SpreadsheetException)e;
-                return "No match found for token [" + we.Token + "] related to formula '" + formulaName + "'.";
+                var spreadSheetException = (SpreadsheetException)e;
+                return "No match found for token [" + spreadSheetException.Token +
+                       "] related to formula '" + formulaName + "'.";
             }
 
             return e.Message;
         }
     }
 
-    public class GenericEnricher : SingleEnricher
+    public class GenericErrorMessage : IErrorMessage
     {
-        public bool Applies(Exception e)
+        public bool AppliesTo(Exception e)
         {
             return true;
         }
 
-        public string ErrorMessage(string formulaName, Exception e)
+        public string CreateMessage(string formulaName, Exception e)
         {
             return e.Message;
         }
@@ -107,22 +109,22 @@ namespace codingdojo
             var formulaName = spreadsheetWorkbook.GetFormulaName();
             var presentation = spreadsheetWorkbook.GetPresentation();
 
-            var enrichers = new List<SingleEnricher> { //
-                new InvalidExpressionEnricher(), //
-                new CircularReferenceEnricher(), //
-                new MissingLookupTableEnricher(), //
-                new NoMatchesEnricher(), //
-                new GenericEnricher()
+            var enrichers = new List<IErrorMessage> { //
+                new InvalidExpressionErrorMessage(), //
+                new CircularReferenceErrorMessage(), //
+                new MissingLookupTableErrorMessage(), //
+                new NoMatchesErrorMessage(), //
+                new GenericErrorMessage()
             };
             foreach (var enricher in enrichers)
             {
-                if (enricher.Applies(e))
+                if (enricher.AppliesTo(e))
                 {
-                    var error = enricher.ErrorMessage(formulaName, e);
+                    var error = enricher.CreateMessage(formulaName, e);
                     return new ErrorResult(formulaName, error, presentation);
                 }
             }
-            var error2 = new GenericEnricher().ErrorMessage(formulaName, e);
+            var error2 = new GenericErrorMessage().CreateMessage(formulaName, e);
             return new ErrorResult(formulaName, error2, presentation);
         }
     }
