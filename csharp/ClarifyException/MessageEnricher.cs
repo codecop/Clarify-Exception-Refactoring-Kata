@@ -97,31 +97,30 @@ namespace codingdojo
 
     public class ErrorMessages
     {
-        private readonly List<IErrorMessage> enrichers;
-        private readonly IErrorMessage finalEnricher;
+        private readonly List<IErrorMessage> errorMessages;
+        private readonly IErrorMessage genericErrorMessage;
 
         public ErrorMessages()
         {
-            this.enrichers = new List<IErrorMessage> { //
+            this.errorMessages = new List<IErrorMessage> { //
                 new InvalidExpressionErrorMessage(), //
                 new CircularReferenceErrorMessage(), //
                 new MissingLookupTableErrorMessage(), //
                 new NoMatchesErrorMessage()
             };
-            this.finalEnricher = new GenericErrorMessage();
+            this.genericErrorMessage = new GenericErrorMessage();
         }
 
-        public IErrorMessage findX(Exception e)
+        public IErrorMessage findErrorMessageFor(Exception e)
         {
-            foreach (var enricher in enrichers)
+            foreach (var errorMessage in errorMessages)
             {
-                if (enricher.AppliesTo(e))
+                if (errorMessage.AppliesTo(e))
                 {
-                    return enricher;
+                    return errorMessage;
                 }
             }
-
-            return finalEnricher;
+            return genericErrorMessage;
         }
     }
 
@@ -129,16 +128,13 @@ namespace codingdojo
     {
         public ErrorResult EnrichError(SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
         {
-            var enrichers = new ErrorMessages();
-            var enricher = enrichers.findX(e);
-            return CreateErrorResult(enricher, spreadsheetWorkbook, e);
-        }
+            var errorMessages = new ErrorMessages();
+            var errorMessage = errorMessages.findErrorMessageFor(e);
 
-        private ErrorResult CreateErrorResult(IErrorMessage enricher, SpreadsheetWorkbook spreadsheetWorkbook, Exception e)
-        {
             var formulaName = spreadsheetWorkbook.GetFormulaName();
+            var error = errorMessage.CreateMessage(formulaName, e);
             var presentation = spreadsheetWorkbook.GetPresentation();
-            var error = enricher.CreateMessage(formulaName, e);
+
             return new ErrorResult(formulaName, error, presentation);
         }
     }
